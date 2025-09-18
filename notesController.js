@@ -24,7 +24,7 @@ const noteSchema = new mongoose.Schema(
 
 const Note = mongoose.model("Note", noteSchema);
 
-// Ensure database connection for tests
+// Ensure database connection
 async function ensureConnection() {
   if (mongoose.connection.readyState === 0) {
     const mongoUri = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/SSD";
@@ -34,65 +34,88 @@ async function ensureConnection() {
 
 // GET all notes
 export async function getAllNotes(req, res) {
-  await ensureConnection();
-  const notes = await Note.find({});
-  res.status(200).json(notes);
+  try {
+    await ensureConnection();
+    const notes = await Note.find({});
+    res.status(200).json(notes);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch notes" });
+  }
 }
 
 // POST create note
 export async function createNotes(req, res) {
-  await ensureConnection();
-  const { title, content } = req.body;
-  if (!title || !content)
-    return res.status(400).json({ error: "Title and content required" });
+  try {
+    await ensureConnection();
+    const { title, content } = req.body;
+    if (!title || !content) {
+      return res.status(400).json({ error: "Title and content required" });
+    }
 
-  const note = new Note({ id: uuidv4(), title, content });
-  const saved = await note.save();
-  res.status(201).json(saved);
+    const note = new Note({ id: uuidv4(), title, content });
+    const saved = await note.save();
+    res.status(201).json(saved);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to create note" });
+  }
 }
 
 // PUT update note by id
 export async function updateNotes(req, res) {
-  await ensureConnection();
-  const { id } = req.params;
-  const { title, content } = req.body;
+  try {
+    await ensureConnection();
+    const { id } = req.params;
+    const { title, content } = req.body;
 
-  if (!title || !content)
-    return res.status(400).json({ error: "Title and content required" });
+    if (!title || !content) {
+      return res.status(400).json({ error: "Title and content required" });
+    }
 
-  const updated = await Note.findOneAndUpdate(
-    { id },
-    { title, content },
-    { new: true }
-  );
+    const updated = await Note.findOneAndUpdate(
+      { id },
+      { title, content },
+      { new: true }
+    );
 
-  if (!updated) {
-    return res.status(404).json({ error: "Note not found" });
+    if (!updated) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+
+    res.status(200).json(updated);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update note" });
   }
-
-  res.status(200).json(updated);
 }
 
 // DELETE note by id
 export async function deleteNotes(req, res) {
-  await ensureConnection();
-  const { id } = req.params;
+  try {
+    await ensureConnection();
+    const { id } = req.params;
 
-  const deleted = await Note.findOneAndDelete({ id });
+    const deleted = await Note.findOneAndDelete({ id });
 
-  if (!deleted) {
-    return res.status(404).json({ error: "Note not found" });
+    if (!deleted) {
+      return res.status(404).json({ error: "Note not found" });
+    }
+
+    res.status(200).json(deleted);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete note" });
   }
-
-  res.status(200).json(deleted);
 }
 
 export function resetNotes() {
-  // Returning a promise but don't make the function async to match the test expectation
+  // Returning a promise but don't make the function async
+  // This is to match the test expectation
   return new Promise(async (resolve, reject) => {
-    await ensureConnection();
-    await Note.deleteMany({});
-    console.log("All notes deleted for testing");
-    resolve();
+    try {
+      await ensureConnection();
+      await Note.deleteMany({});
+      console.log("All notes deleted for testing");
+      resolve();
+    } catch (err) {
+      reject(err);
+    }
   });
 }
